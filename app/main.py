@@ -19,6 +19,8 @@ class GetPartitions:
         self.input_file_path = params["input_file_path"]
         self.save_partition_data = params["save_partition_data"]
         self.plot_graph = params["plot_graph"]
+        if not os.path.exists("./output/"):
+            os.mkdir("./output/")
         self.fpath = f"./output/exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
         if not os.path.exists(self.fpath):
             os.mkdir(self.fpath)
