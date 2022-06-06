@@ -44,6 +44,7 @@ class GetPartitions:
         return gr
 
     def do_partitions(self, gr) -> pd.DataFrame():
+        '''Use Louvain method to get partitions, save as JSON'''
         partition = louvain.best_partition(gr)
         df = pd.DataFrame([partition]).T
         if self.save_partition_data == True:
@@ -51,17 +52,35 @@ class GetPartitions:
             df.to_json(f"{self.fpath}full_louvain_partition.json")
         return df
 
+    def output_conditioning(self, df) -> None:
+        '''Produce structured data, save'''
+        unique, counts = np.unique(df, return_counts=True)
+        print(f"Saving output. There are {len(unique)} communities detected")
+        genomes = [df[0].iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+        output_table = pd.DataFrame()
+        output_table["community_id"] = unique
+        output_table["n_genomes"] = counts
+        output_table["threshold"] = self.p_value
+        output_table.to_csv(f"{self.fpath}community_counts_table.csv")
+        output_table["accession_ids"] = genomes
+        output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: str(x).replace("[","").replace("]","").replace("'",""))
+        output_table.to_csv(f"{self.fpath}community_members_table.csv")
+        
+
     def calculate_layout(self, gr) -> dict:
+        '''Get NetworkX graph layout'''
         print("Calculating graph layout. This takes a while.")
         return nx.spring_layout(gr)
 
     def main(self) -> str:
+        '''Entrypoint'''
         st = time.time()
         print(f"Starting job at {st}")
 
         df_clean = self.load_and_clean()
         graph_object = self.make_graph(df_clean[["binA", "binB", "distance"]])
         partition_df = self.do_partitions(graph_object)
+        self.output_conditioning(partition_df)
 
         if self.plot_graph == True:
             pos = self.calculate_layout(graph_object)
@@ -73,6 +92,7 @@ class GetPartitions:
 
 
 if __name__ == "__main__":
+    '''Dev use only'''
     params = {"sample_size": 10000,
               "p_value": 0.05,
               "input_file_path": "./MASH_dist_01Mar2022.tsv",
@@ -81,6 +101,3 @@ if __name__ == "__main__":
     gp = GetPartitions(params)
     status = gp.main()
     print(status)
-    # To do:
-    # Output table structure
-    # Save to output folder

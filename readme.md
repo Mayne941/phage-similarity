@@ -3,7 +3,7 @@
 
 To install:
 
-1. cd to PHAGE-CODING
+1. cd {repo directory}
 1. python3 -m pip install -r requirements.txt
 
 To run:
