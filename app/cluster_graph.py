@@ -30,7 +30,7 @@ class ClusterPlot:
             x1, y1 = self.pos[char_2]
             text = char_1 + '--' + char_2 + ': '
             trace = self.make_edge(
-                [x0, x1, None], [y0, y1, None], text, width=1.0)  # 0.3
+                [x0, x1, None], [y0, y1, None], text, width=1.0)  
             edge_trace.append(trace)
         return edge_trace
 
@@ -41,7 +41,7 @@ class ClusterPlot:
                                 text=[],
                                 textposition="middle center",
                                 textfont_size=10,
-                                mode='markers',  # +text',
+                                mode='markers',  
                                 hoverinfo='text',
                                 marker=dict(color=[],
                                              size=5,
@@ -72,7 +72,7 @@ class ClusterPlot:
                 zaxis=dict(axis),
             ),
             title=f"2D projection, n={self.sample_size}",
-            paper_bgcolor="#333333",  # osprey grey bg
+            paper_bgcolor="#333333",  
             plot_bgcolor="#333333",
             font_color='#f7f7f7',
             width=1200,
@@ -89,8 +89,7 @@ class ClusterPlot:
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
         fig.write_image(f"{self.fpath}fig1.png")
-
-        # fig.show()
+        fig.show()
 
     def make_all(self):
         edge_trace = self.make_edges()

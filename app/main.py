@@ -12,13 +12,14 @@ from .cluster_graph import ClusterPlot
 
 class GetPartitions:
     def __init__(self, params) -> None:
+        '''Set up exp folder, decode runtime params'''
         self.le = LabelEncoder()
         self.sample_size = params["sample_size"]
         self.p_value = params["p_value"]
         self.input_file_path = params["input_file_path"]
         self.save_partition_data = params["save_partition_data"]
         self.plot_graph = params["plot_graph"]
-        self.fpath = f"./exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
+        self.fpath = f"./output/exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
         if not os.path.exists(self.fpath):
             os.mkdir(self.fpath)
 
@@ -27,6 +28,8 @@ class GetPartitions:
         df = pd.read_csv(self.input_file_path, delimiter="\t", engine="python")
         df_no_dups = df[~(df["binA"] == df["binB"])]
         df_no_dups = df_no_dups[~(df_no_dups["tX1000"] == "1000/1000")]
+        if self.sample_size <= 0:
+            self.sample_size = df_no_dups.shape[0]
         return df_no_dups.head(self.sample_size)
 
     def make_graph(self, df) -> nx.Graph():
@@ -48,7 +51,6 @@ class GetPartitions:
         partition = louvain.best_partition(gr)
         df = pd.DataFrame([partition]).T
         if self.save_partition_data == True:
-            # < RM change when output conditioning done
             df.to_json(f"{self.fpath}full_louvain_partition.json")
         return df
 
@@ -65,7 +67,6 @@ class GetPartitions:
         output_table["accession_ids"] = genomes
         output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: str(x).replace("[","").replace("]","").replace("'",""))
         output_table.to_csv(f"{self.fpath}community_members_table.csv")
-        
 
     def calculate_layout(self, gr) -> dict:
         '''Get NetworkX graph layout'''
@@ -88,16 +89,16 @@ class GetPartitions:
                 graph_object, partition_df[0], pos, self.sample_size, self.fpath)
             plot.make_all()
 
-        return f"Finished in {round(time.time() - st, 2)} Sec"
+        return f"Finished in {round(time.time() - st, 2)} Sec. Results saved to {self.fpath}"
 
 
 if __name__ == "__main__":
     '''Dev use only'''
-    params = {"sample_size": 10000,
+    params = {"sample_size": 0,
               "p_value": 0.05,
               "input_file_path": "./MASH_dist_01Mar2022.tsv",
               "save_partition_data": True,
-              "plot_graph": True}
+              "plot_graph": False}
     gp = GetPartitions(params)
     status = gp.main()
     print(status)
