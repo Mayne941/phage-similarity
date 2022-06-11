@@ -88,10 +88,11 @@ class ClusterPlot:
         fig.update_layout(showlegend=False)
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.write_image(f"{self.fpath}fig1.png")
+        fig.write_image(f"{self.fpath}cluster_graph.png")
         fig.show()
 
     def make_all(self):
+        print("Plotting graph. Nearly there...")
         edge_trace = self.make_edges()
         node_trace = self.make_nodes()
         self.make_plot(edge_trace, node_trace)
