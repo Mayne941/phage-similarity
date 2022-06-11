@@ -8,7 +8,7 @@ import networkx as nx
 import time
 from datetime import datetime
 from .cluster_graph import ClusterPlot
-
+from .dendrogram import create_dendrogram
 
 class GetPartitions:
     def __init__(self, params) -> None:
@@ -19,6 +19,9 @@ class GetPartitions:
         self.input_file_path = params["input_file_path"]
         self.save_partition_data = params["save_partition_data"]
         self.plot_graph = params["plot_graph"]
+        self.dendro_threshold = params["dendro_threshold"]
+        self.trunc = params["dendro_truncation"]
+        self.dendro_width = params["dendro_width"]
         if not os.path.exists("./output/"):
             os.mkdir("./output/")
         self.fpath = f"./output/exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
@@ -69,23 +72,36 @@ class GetPartitions:
         output_table["accession_ids"] = genomes
         output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: str(x).replace("[","").replace("]","").replace("'",""))
         output_table.to_csv(f"{self.fpath}community_members_table.csv")
+        return len(unique)
 
     def calculate_layout(self, gr) -> dict:
         '''Get NetworkX graph layout'''
-        print("Calculating graph layout. This takes a while.")
+        print("Calculating graph layout. This may take a while...")
         return nx.spring_layout(gr)
 
     def main(self) -> str:
         '''Entrypoint'''
         st = time.time()
-        print(f"Starting job at {st}")
+        print(f"Starting job at {st}\nDoing data extraction, loading & transformation")
 
+        '''Clean & structure data'''
         df_clean = self.load_and_clean()
         graph_object = self.make_graph(df_clean[["binA", "binB", "distance"]])
         partition_df = self.do_partitions(graph_object)
-        self.output_conditioning(partition_df)
+        p = self.output_conditioning(partition_df)
 
         if self.plot_graph == True:
+            '''Do dendrogram'''
+            th = time.time()
+            if self.trunc == "lastp":
+                create_dendrogram(partition_df, self.fpath, self.sample_size, self.dendro_threshold, self.trunc, self.dendro_width, p=p, labels=partition_df[0])
+            else:
+                create_dendrogram(partition_df, self.fpath, self.sample_size, self.dendro_threshold, self.trunc, self.dendro_width, p=0, labels=partition_df.index)
+            print(f"Dendrogram time, {self.sample_size} samples = {time.time()-th}")
+
+            return
+
+            '''Do network graph'''
             pos = self.calculate_layout(graph_object)
             plot = ClusterPlot(
                 graph_object, partition_df[0], pos, self.sample_size, self.fpath)
@@ -96,11 +112,14 @@ class GetPartitions:
 
 if __name__ == "__main__":
     '''Dev use only'''
-    params = {"sample_size": 0,
+    params = {"sample_size": 1000,
               "p_value": 0.05,
               "input_file_path": "./MASH_dist_01Mar2022.tsv",
               "save_partition_data": True,
-              "plot_graph": False}
+              "plot_graph": True,
+              "dendro_threshold": 1.5,
+              "dendro_truncation": "lastp", # "none" is subs kw for None
+              "dendro_width": 25000} 
     gp = GetPartitions(params)
     status = gp.main()
     print(status)
