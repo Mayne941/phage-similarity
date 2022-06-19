@@ -29,13 +29,14 @@ class GetPartitions:
             os.mkdir(self.fpath)
 
     def load_and_clean(self) -> pd.DataFrame:
-        '''Read in data, filter duplicates'''
+        '''Read in data, filter duplicates and by p value threshold'''
         df = pd.read_csv(self.input_file_path, delimiter="\t", engine="python")
         df_no_dups = df[~(df["binA"] == df["binB"])]
         df_no_dups = df_no_dups[~(df_no_dups["tX1000"] == "1000/1000")]
+        df_p_filter = df_no_dups[df_no_dups["distance"] <= self.p_value]
         if self.sample_size <= 0:
-            self.sample_size = df_no_dups.shape[0]
-        return df_no_dups.head(self.sample_size)
+            self.sample_size = df_p_filter.shape[0]
+        return df_p_filter.head(self.sample_size)
 
     def make_graph(self, df) -> nx.Graph():
         '''Make NetworkX graph object'''
@@ -47,8 +48,7 @@ class GetPartitions:
         [gr.add_node(i) for i in df["binA"].unique().tolist()]
         edges = [[(genome_names[i], binB[i], {"distance": dist[i]})] for i in range(
             len(genome_names))]
-        [gr.add_edges_from(i) for i in edges if i[0][2]
-         ["distance"] <= self.p_value]
+        [gr.add_edges_from(i) for i in edges]
         return gr
 
     def do_partitions(self, gr) -> pd.DataFrame():
@@ -99,7 +99,7 @@ class GetPartitions:
                 create_dendrogram(partition_df, self.fpath, self.sample_size, self.dendro_threshold, self.trunc, self.dendro_width, p=0, labels=partition_df.index)
             print(f"Dendrogram time, {self.sample_size} samples = {time.time()-th}")
 
-            return
+            return # Only uncomment me if you really want to plot a massive network graph
 
             '''Do network graph'''
             pos = self.calculate_layout(graph_object)
@@ -112,9 +112,9 @@ class GetPartitions:
 
 if __name__ == "__main__":
     '''Dev use only'''
-    params = {"sample_size": 1000,
-              "p_value": 0.05,
-              "input_file_path": "./MASH_dist_01Mar2022.tsv",
+    params = {"sample_size": 0,
+              "p_value": 0.1,
+              "input_file_path": "./MASH_dist_1Jun2022_0.3.k31.tsv", #./MASH_dist_01Mar2022.tsv",
               "save_partition_data": True,
               "plot_graph": True,
               "dendro_threshold": 1.5,
