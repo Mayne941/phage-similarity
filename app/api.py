@@ -7,7 +7,7 @@ app = FastAPI()
 
 
 class PayloadData(BaseModel):
-    p_value: float = 0.05
+    distance_value: float = 0.05
     input_file_path: str = "./MASH_dist_01Mar2022.tsv"
     save_partition_data: bool = True
     plot_graph: bool = False
