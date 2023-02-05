@@ -15,7 +15,7 @@ class GetPartitions:
         '''Set up exp folder, decode runtime params'''
         self.le = LabelEncoder()
         self.sample_size = params["sample_size"]
-        self.p_value = params["p_value"]
+        self.p_value = params["p_value"]    # It would be appropriate to rename this to distance_value to distinguish between dist and p-value in the MASH file!
         self.input_file_path = params["input_file_path"]
         self.save_partition_data = params["save_partition_data"]
         self.plot_graph = params["plot_graph"]
@@ -30,30 +30,38 @@ class GetPartitions:
 
     def load_and_clean(self) -> pd.DataFrame:
         '''Read in data, filter duplicates and by p value threshold'''
-        df = pd.read_csv(self.input_file_path, delimiter="\t", engine="python")
+        df = pd.read_csv(self.input_file_path, delimiter="\t", engine="python") # Can we add columns to the MASH file directly here? e.g. names = ["binA", "binB", "distance", "p-value", "tX"]
+        # Would this line alone be sufficient to remove self-matches?
         df_no_dups = df[~(df["binA"] == df["binB"])]
+        # This could probably disregarded as tX value is now altered to 25000 (variable in MASH); but could use as a secondary threshold? Also, two separately named phages of identical sequences would removed - probably want to keep these!
         df_no_dups = df_no_dups[~(df_no_dups["tX1000"] == "1000/1000")]
-        df_p_filter = df_no_dups[df_no_dups["distance"] <= self.p_value]
+        # Filtering the dataframe by distance threshold - filter commented out which is inelegant as the same data now transferred to a differently named df :(
+        df_p_filter = df_no_dups #[df_no_dups["distance"] <= self.p_value]
         if self.sample_size <= 0:
             self.sample_size = df_p_filter.shape[0]
         return df_p_filter.head(self.sample_size)
 
     def make_graph(self, df) -> nx.Graph():
         '''Make NetworkX graph object'''
-        genome_names = df["binA"].tolist()
+        genome_names = df["binA"].tolist()  #Query - assume this makes a unique list of genome names... I am tired and probably being stupid here ;-)
         binB = df["binB"].tolist()
         dist = df["distance"].tolist()
         gr = nx.Graph()
-
         [gr.add_node(i) for i in df["binA"].unique().tolist()]
         edges = [[(genome_names[i], binB[i], {"distance": dist[i]})] for i in range(
             len(genome_names))]
         [gr.add_edges_from(i) for i in edges]
+        #Drop edges from the graph that are less than or equal to p_value (distance) threshold
+        long_edges = list(filter(lambda e: e[2] >= self.p_value, (e for e in gr.edges.data('distance'))))
+        le_ids = list(e[:2] for e in long_edges)
+        gr.remove_edges_from(le_ids)
+        #For info, print the number of nodes and edges
+        print(nx.info(gr))
         return gr
 
     def do_partitions(self, gr) -> pd.DataFrame():
         '''Use Louvain method to get partitions, save as JSON'''
-        partition = louvain.best_partition(gr)
+        partition = louvain.best_partition(gr,weight='distance') #edited to specify distance as edge weight; could play with resolution option?
         df = pd.DataFrame([partition]).T
         if self.save_partition_data == True:
             df.to_json(f"{self.fpath}full_louvain_partition.json")
