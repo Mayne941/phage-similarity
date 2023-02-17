@@ -15,6 +15,7 @@ class PayloadData(BaseModel):
     dendro_threshold: int = 1.5
     dendro_truncation: str = "none"
     dendro_width = int = 2500
+    hashes = int = 0
 
 
 @app.get("/")

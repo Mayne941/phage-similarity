@@ -22,6 +22,7 @@ class GetPartitions:
         self.dendro_threshold = params["dendro_threshold"]
         self.trunc = params["dendro_truncation"]
         self.dendro_width = params["dendro_width"]
+        self.hashes = params["hashes"]
         if not os.path.exists("./output/"):
             os.mkdir("./output/")
         self.fpath = f"./output/exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
@@ -33,10 +34,11 @@ class GetPartitions:
         df = pd.read_csv(self.input_file_path, delimiter="\t", engine="python", header=0, names=["binA", "binB", "distance", "p-value", "tX"]) 
         df_no_dups = df[~(df["binA"] == df["binB"])]
         '''DT: This could probably disregarded as tX value is now altered to 25000 (variable in MASH); but could use as a secondary threshold? Also, two separately named phages of identical sequences would removed - probably want to keep these!'''
-        # df_no_dups = df_no_dups[~(df_no_dups["tX1000"] == "1000/1000")]
+        df_no_dups["t"] = df_no_dups["tX"].str.split("/").str[0].astype(int)
+        df_filtered = df_no_dups[~(df_no_dups["t"] < self.hashes)]
         if self.sample_size <= 0:
-            self.sample_size = df_no_dups.shape[0]
-        return df_no_dups.head(self.sample_size)
+            self.sample_size = df_filtered.shape[0]
+        return df_filtered.head(self.sample_size)
 
     def make_graph(self, df) -> nx.Graph():
         '''Make NetworkX graph object'''
@@ -105,7 +107,7 @@ class GetPartitions:
             create_dendrogram(partition_df, self.fpath, self.sample_size, self.dendro_threshold, self.trunc, self.dendro_width, p=p_value, labels=dendro_labels)
             print(f"Dendrogram time, {self.sample_size} samples = {time.time()-th}")
 
-            return # Only uncomment me if you really want to plot a massive network graph
+            # return # Only uncomment me if you really want to plot a massive network graph
 
             '''Do network graph'''
             pos = self.calculate_layout(graph_object)
