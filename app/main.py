@@ -22,6 +22,7 @@ class GetPartitions:
         self.dendro_threshold = params["dendro_threshold"]
         self.trunc = params["dendro_truncation"]
         self.dendro_width = params["dendro_width"]
+        self.hash_threshold = params["hash_threshold"]
         if not os.path.exists("./output/"):
             os.mkdir("./output/")
         self.fpath = f"./output/exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
@@ -32,11 +33,16 @@ class GetPartitions:
         '''Read in data, filter duplicates and by p value threshold'''
         df = pd.read_csv(self.input_file_path, delimiter="\t", engine="python", header=0, names=["binA", "binB", "distance", "p-value", "tX"]) 
         df_no_dups = df[~(df["binA"] == df["binB"])]
-        '''DT: This could probably disregarded as tX value is now altered to 25000 (variable in MASH); but could use as a secondary threshold? Also, two separately named phages of identical sequences would removed - probably want to keep these!'''
-        # df_no_dups = df_no_dups[~(df_no_dups["tX1000"] == "1000/1000")]
+        '''Hash filter'''
+        df_no_dups["t"] = df_no_dups["tX"].str.split("/").str[0].astype(int)
+        df_no_dups["X"] = df_no_dups["tX"].str.split("/").str[1].astype(int)
+        df_no_dups["hashes"] = df_no_dups["t"]/df_no_dups["X"]
+        df_filtered = df_no_dups[~(df_no_dups["hashes"] < self.hash_threshold)]
+        print(f"Filtering by hashes has removed {df_no_dups.shape[0] - df_filtered.shape[0]} samples.")
+        '''Sample size filter'''
         if self.sample_size <= 0:
-            self.sample_size = df_no_dups.shape[0]
-        return df_no_dups.head(self.sample_size)
+            self.sample_size = df_filtered.shape[0]
+        return df_filtered.head(self.sample_size)
 
     def make_graph(self, df) -> nx.Graph():
         '''Make NetworkX graph object'''
@@ -51,13 +57,12 @@ class GetPartitions:
         long_edges = list(filter(lambda e: e[2] >= self.distance_value, (e for e in gr.edges.data('distance'))))
         le_ids = list(e[:2] for e in long_edges)
         gr.remove_edges_from(le_ids)
-        print(nx.info(gr)) #For info, print the number of nodes and edges
+        print(nx.info(gr)) 
         return gr
 
     def do_partitions(self, gr) -> pd.DataFrame():
         '''Use Louvain method to get partitions, save as JSON'''
-        partition = louvain.best_partition(gr,weight='distance') 
-        df = pd.DataFrame([partition]).T
+        df = pd.DataFrame([louvain.best_partition(gr,weight='distance')]).T
         if self.save_partition_data == True:
             df.to_json(f"{self.fpath}full_louvain_partition.json")
         return df
@@ -105,7 +110,7 @@ class GetPartitions:
             create_dendrogram(partition_df, self.fpath, self.sample_size, self.dendro_threshold, self.trunc, self.dendro_width, p=p_value, labels=dendro_labels)
             print(f"Dendrogram time, {self.sample_size} samples = {time.time()-th}")
 
-            return # Only uncomment me if you really want to plot a massive network graph
+            # return # Only uncomment me if you really want to plot a massive network graph
 
             '''Do network graph'''
             pos = self.calculate_layout(graph_object)
@@ -118,14 +123,4 @@ class GetPartitions:
 
 if __name__ == "__main__":
     '''Dev use only'''
-    params = {"sample_size": 1000,
-              "distance_value": 0.1,
-              "input_file_path": "./MASH_dist_01Mar2022.tsv", #"./MASH_dist_1Jun2022_0.3.k31.tsv", #,
-              "save_partition_data": True,
-              "plot_graph": True,
-              "dendro_threshold": 1.5,
-              "dendro_truncation": "lastp", # "none" is subs kw for None
-              "dendro_width": 25000} 
-    gp = GetPartitions(params)
-    status = gp.main()
-    print(status)
+    ...
