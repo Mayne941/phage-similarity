@@ -23,6 +23,7 @@ class GetPartitions:
         self.trunc = params["dendro_truncation"]
         self.dendro_width = params["dendro_width"]
         self.hash_threshold = params["hash_threshold"]
+        self.p_threshold = params["p_threshold"]
         if not os.path.exists("./output/"):
             os.mkdir("./output/")
         self.fpath = f"./output/exp_{datetime.now().strftime('%d-%b-%Y--%H-%M-%S')}/"
@@ -37,7 +38,6 @@ class GetPartitions:
         df_no_dups["t"] = df_no_dups["tX"].str.split("/").str[0].astype(int)
         df_no_dups["X"] = df_no_dups["tX"].str.split("/").str[1].astype(int)
         df_no_dups["hashes"] = df_no_dups["t"]/df_no_dups["X"]
-        df_filtered = df_no_dups[~(df_no_dups["hashes"] < self.hash_threshold)]
         print(f"Filtering by hashes has removed {df_no_dups.shape[0] - df_filtered.shape[0]} samples.")
         '''Sample size filter'''
         if self.sample_size <= 0:
@@ -51,13 +51,24 @@ class GetPartitions:
         dist = df["distance"].tolist()
         gr = nx.Graph()
         [gr.add_node(i) for i in df["binA"].unique().tolist()]
-        edges = [[(genome_names[i], binB[i], {"distance": dist[i]})] for i in range(
+        edges = [[(genome_names[i], binB[i], {"distance": dist[i], "hashes": hashes[i], "p-value": pvalue[i]})] for i in range(
             len(genome_names))]
         [gr.add_edges_from(i) for i in edges]
-        long_edges = list(filter(lambda e: e[2] >= self.distance_value, (e for e in gr.edges.data('distance'))))
+        # Filter a list of edges from the graph that are greater than the distance threshold
+        long_edges = list(filter(lambda e: e[2] > self.distance_value, (e for e in gr.edges.data('distance'))))
         le_ids = list(e[:2] for e in long_edges)
         gr.remove_edges_from(le_ids)
-        print(nx.info(gr)) 
+        # Filter a list of edges from the graph that are less than the hashes threshold
+        hash_edges = list(filter(lambda e: e[2] < self.hash_threshold, (e for e in gr.edges.data('hashes'))))
+        he_ids = list(e[:2] for e in hash_edges)
+        # Filter a list of edges from the graph that are greater than the p-value threshold
+        pval_edges = list(filter(lambda e: e[2] > self.p_threshold, (e for e in gr.edges.data('p-value'))))
+        pval_ids = list(e[:2] for e in pval_edges)
+        gr.remove_edges_from(pval_ids)
+        print(nx.info(gr))
+        #p-value filter - suggest 1e-10
+        ''' Write out a graphml file for visualisation in cytoscape'''
+        nx.write_graphml(gr, f"{self.fpath}networkx.xml")
         return gr
 
     def do_partitions(self, gr) -> pd.DataFrame():
