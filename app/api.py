@@ -9,6 +9,7 @@ app = FastAPI()
 class PayloadData(BaseModel):
     distance_value: float = 0.07
     input_file_path: str = "./2Jul2023.d0.3.k15.s25000.tsv"
+    taxonomy_file_path: str = "./taxonomy.csv"
     save_partition_data: bool = True
     plot_graph: bool = False
     sample_size: int = 0
