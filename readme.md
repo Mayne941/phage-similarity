@@ -7,10 +7,9 @@ MASHup takes the results of an all-vs-all MASH comparison of the INPHARED datase
 mash sketch -i -k 15 -s 25000 5Jan2023_genomes_excluding_refseq.fa
 mash dist -i -d 0.3 5Jan2023_genomes_excluding_refseq.msh 5Jan2023_genomes_excluding_refseq.mash > 5Jan2023.d0.3.k15.s25000.tsv
 ```  
-A networkx object is created, where the nodes are genomes and the edges are the calculated MASH distance. The matching hashes and p-values are associated with each edge. Edges that do not meet the specified thresholds are dropped from the network prior to paritioning into communities using the Louvain algorithm. 
+A networkx object is created, where the nodes are genomes and the edges are the calculated MASH distance. The matching hashes and p-values are also associated with each edge. Edges that do not meet the user specified thresholds are dropped from the network prior to paritioning into communities using the Louvain algorithm. 
 
 ### To install:
-
 1. cd {repo directory}
 1. python3 -m pip install -r requirements.txt
 
