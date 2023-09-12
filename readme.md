@@ -1,19 +1,29 @@
 # Grouping MASH results into communities
-## Rich Mayne 2022
+## Rich Mayne & Dann Turner 2022
 
-To install:
+### Description
+MASHup takes the results of an all-vs-all MASH comparison of the INPHARED dataset:
+```bash
+mash sketch -i -k 15 -s 25000 5Jan2023_genomes_excluding_refseq.fa
+mash dist -i -d 0.3 5Jan2023_genomes_excluding_refseq.msh 5Jan2023_genomes_excluding_refseq.mash > 5Jan2023.d0.3.k15.s25000.tsv
+```  
+A networkx object is created, where the nodes are genomes and the edges are the calculated MASH distance. The matching hashes and p-values are associated with each edge. Edges that do not meet the specified thresholds are dropped from the network prior to paritioning into communities using the Louvain algorithm. 
+
+### To install:
 
 1. cd {repo directory}
 1. python3 -m pip install -r requirements.txt
 
-To run:
+### To run:
 1. python3 -m uvicorn app.api:app --reload
 1. Navigate to http://127.0.0.1:8000/docs in browser
 1. Expand the "/do_partitions/" window, then hit "try it out".
 1. Specify your run parameters, including defining the path to your MASH output file. Then, hit "execute".
 
-Run parameters:
-1. P value. Threshold or probability value, used to restrict the sensitivity of genome similarity, i.e. any rows with similarity scores > threshold will be discounted.
+### Run parameters:
+1. Distance value. The MASH distance threshold, used to restrict the sensitivity of genome similarity, i.e. any edges with similarity scores > threshold will be dropped.
+1. Hash threshold. Any edges where the fraction of matching hashes is < than the threshold will be dropped.
+1. p_threshold. Any edges where the p-value is > than the threshold will be dropped. 
 1. Input file path. Point to MASH output TSV file. N.b. uses Linux dot notation: recommended to place your data file in the top level directory of this repo.
 1. Save partition data. Set to True to save an unmodified dataset for cluster groupings, e.g. for making Dendrograms. Saves as JSON.
 1. Plot graph. Set to True to project clusters into 2 dimensions as a nx graph (spring layout by default) and plot. Will open an interactive figure in a browser and save a still PNG image. N.b. For large numbers of samples (>10k) this will take a very long time.
