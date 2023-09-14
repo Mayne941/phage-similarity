@@ -2,7 +2,8 @@
 ## Rich Mayne & Dann Turner 2022
 
 ### Description
-MASHup takes the results of an all-vs-all MASH comparison of the INPHARED dataset:
+MASHup takes the results of an all-vs-all MASH comparison of the INPHARED dataset.
+Download the lastest (INPHARED genomes excluding RefSeq file)[https://github.com/RyanCook94/inphared]
 ```bash
 mash sketch -i -k 15 -s 25000 5Jan2023_genomes_excluding_refseq.fa
 mash dist -i -d 0.3 5Jan2023_genomes_excluding_refseq.msh 5Jan2023_genomes_excluding_refseq.mash > 5Jan2023.d0.3.k15.s25000.tsv
