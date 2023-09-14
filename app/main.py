@@ -67,7 +67,6 @@ class GetPartitions:
         pval_ids = list(e[:2] for e in pval_edges)
         gr.remove_edges_from(pval_ids)
         print(nx.info(gr))
-        #p-value filter - suggest 1e-10
         ''' Write out a graphml file for visualisation in cytoscape'''
         nx.write_graphml(gr, f"{self.fpath}networkx.xml")
         return gr
