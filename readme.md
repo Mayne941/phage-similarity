@@ -1,5 +1,5 @@
 # Grouping MASH results into communities
-## Rich Mayne & Dann Turner 2022
+## Rich Mayne & Dann Turner 2023
 
 ### Description
 MASHUP creates a networkx object from the MASH distances, where the nodes are genomes and the edges are the calculated MASH distance. The matching hashes and p-values are also associated with each edge. Edges that do not meet the user specified thresholds are dropped from the network prior to paritioning into communities using the Louvain algorithm. Each genome is then mapped against the existing ICTV BVS taxonomy. Six output files are created:
