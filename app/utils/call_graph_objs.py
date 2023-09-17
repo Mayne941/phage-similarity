@@ -13,7 +13,7 @@ def do_louvain_partitions(gr, save_partition_data, fpath) -> pd.DataFrame():
 
 def do_leiden_partitions(gr, save_partition_data, fpath) -> pd.DataFrame():
     '''Use Leiden method to get partitions, save as JSON'''
-    #Convert networkx to igraph
+    '''Convert networkx to igraph for Leiden compatibility'''
     g = ig.Graph.from_networkx(gr)
     nodes_list = np.asarray(g.vs['_nx_name'])
     partitions = dict()

@@ -57,22 +57,21 @@ class GetPartitions:
         edges = [[(genome_names[i], binB[i], {"distance": dist[i], "hashes": hashes[i], "p-value": pvalue[i]})] for i in range(
             len(genome_names))]
         [gr.add_edges_from(i) for i in edges]
-        # Filter a list of edges from the graph that are greater than the distance threshold
+
+        '''Filter a list of edges from the graph that are greater than the distance threshold'''
         long_edges = list(filter(lambda e: e[2] > self.distance_value, (e for e in gr.edges.data('distance'))))
         le_ids = list(e[:2] for e in long_edges)
         gr.remove_edges_from(le_ids)
-        # Filter a list of edges from the graph that are less than the hashes threshold
-        hash_edges = list(filter(lambda e: e[2] < self.hash_threshold, (e for e in gr.edges.data('hashes'))))
-        he_ids = list(e[:2] for e in hash_edges)
-        # Filter a list of edges from the graph that are greater than the p-value threshold
+
+        '''Filter a list of edges from the graph that are greater than the p-value threshold'''
         pval_edges = list(filter(lambda e: e[2] > self.p_threshold, (e for e in gr.edges.data('p-value'))))
         pval_ids = list(e[:2] for e in pval_edges)
         gr.remove_edges_from(pval_ids)
         print(nx.info(gr))
+
         ''' Write out a graphml file for visualisation in cytoscape'''
         nx.write_graphml(gr, f"{self.fpath}networkx.xml")
-        partition_df = do_louvain_partitions(gr, self.save_partition_data, self.fpath)
-        return gr, partition_df
+        return gr, do_louvain_partitions(gr, self.save_partition_data, self.fpath)
 
     def make_i_graph(self, df) -> nx.Graph():
         '''Make NetworkX graph object'''
@@ -87,23 +86,20 @@ class GetPartitions:
         edges = [[(genome_names[i], binB[i], {"distance": dist[i], "hashes": hashes[i], "p-value": pvalue[i]})] for i in range(
             len(genome_names))]
         [gr.add_edges_from(i) for i in edges]
-        #Filter a list of edges from the graph that are greater than the distance threshold
+
+        '''Filter a list of edges from the graph that are greater than the distance threshold'''
         long_edges = list(filter(lambda e: e[2] > self.distance_value, (e for e in gr.edges.data('distance'))))
         le_ids = list(e[:2] for e in long_edges)
         gr.remove_edges_from(le_ids)
-        #Filter a list of edges from the graph that are less than the hashes threshold
-        hash_edges = list(filter(lambda e: e[2] < self.hash_threshold, (e for e in gr.edges.data('hashes'))))
-        he_ids = list(e[:2] for e in hash_edges)
-        #Filter a list of edges from the graph that are greater than the p-value threshold
+
+        '''Filter a list of edges from the graph that are greater than the p-value threshold'''
         pval_edges = list(filter(lambda e: e[2] > self.p_threshold, (e for e in gr.edges.data('p-value'))))
         pval_ids = list(e[:2] for e in pval_edges)
         gr.remove_edges_from(pval_ids)
         print(nx.info(gr))
-        #p-value filter - suggest 1e-10
         ''' Write out a graphml file for visualisation in cytoscape'''
         nx.write_graphml(gr, f"{self.fpath}networkx.xml")
-        part_df = do_leiden_partitions(gr, self.save_partition_data, self.fpath)
-        return gr, part_df
+        return gr, do_leiden_partitions(gr, self.save_partition_data, self.fpath)
 
     def output_conditioning(self, df) -> pd.DataFrame():
         '''Produce structured data, save'''
@@ -122,7 +118,7 @@ class GetPartitions:
         output_table["threshold"] = self.distance_value
         output_table.to_csv(f"{self.fpath}community_counts_table.csv")
         output_table["accession_ids"] = genomes
-        output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: str(x).replace("[","").replace("]","").replace("'",""))
+        output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: ", ".join(x))
         output_table.to_csv(f"{self.fpath}community_members_table.csv")
         return output_table, len(unique)
 
@@ -186,7 +182,9 @@ class GetPartitions:
                 graph_object, partition_df[0], pos, self.sample_size, self.fpath)
             plot.make_all()
 
-        return f"Finished in {round(time.time() - st, 2)} Sec. Results saved to {self.fpath}"
+        msg = f"Finished in {round(time.time() - st, 2)} Sec. Results saved to {self.fpath}"
+        print(msg)
+        return msg
 
 
 if __name__ == "__main__":
