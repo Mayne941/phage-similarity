@@ -99,7 +99,6 @@ class GetPartitions:
         else:
             df.set_index([0], inplace=True)
             genome_match_df = df.copy()
-        breakpoint()
         unique, counts = np.unique(genome_match_df, return_counts=True)
         genomes = [genome_match_df.iloc[np.where(np.isin(genome_match_df.values, int(i)))[0]].index.to_list() for i in unique]
         print(f"Saving output. There are {len(unique)} communities detected")
