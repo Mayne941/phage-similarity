@@ -17,6 +17,7 @@ class GetPartitions:
         self.sample_size = params["sample_size"]
         self.distance_value = params["distance_value"]    
         self.input_file_path = params["input_file_path"]
+        self.taxonomy_file_path = params["taxonomy_file_path"]
         self.save_partition_data = params["save_partition_data"]
         self.plot_graph = params["plot_graph"]
         self.dendro_threshold = params["dendro_threshold"]
@@ -66,7 +67,6 @@ class GetPartitions:
         pval_ids = list(e[:2] for e in pval_edges)
         gr.remove_edges_from(pval_ids)
         print(nx.info(gr))
-        #p-value filter - suggest 1e-10
         ''' Write out a graphml file for visualisation in cytoscape'''
         nx.write_graphml(gr, f"{self.fpath}networkx.xml")
         return gr
@@ -78,7 +78,7 @@ class GetPartitions:
             df.to_json(f"{self.fpath}full_louvain_partition.json")
         return df
 
-    def output_conditioning(self, df) -> None:
+    def output_conditioning(self, df) -> pd.DataFrame():
         '''Produce structured data, save'''
         unique, counts = np.unique(df, return_counts=True)
         print(f"Saving output. There are {len(unique)} communities detected")
@@ -91,8 +91,27 @@ class GetPartitions:
         output_table["accession_ids"] = genomes
         output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: str(x).replace("[","").replace("]","").replace("'",""))
         output_table.to_csv(f"{self.fpath}community_members_table.csv")
-        return len(unique)
+        return output_table #len(unique)
 
+    def output_mapping(self, output_table) -> None:
+        '''Map to current BVS taxonomy, save'''
+        # load the data
+        communities_df = pd.DataFrame(output_table)
+        taxonomy_df = pd.read_csv(self.taxonomy_file_path, header=0)
+        # split the accession_ids field into lists
+        communities_df['accession_ids'] = communities_df['accession_ids'].str.split(', ')
+        # explode the lists
+        communities_df = communities_df.explode('accession_ids', ignore_index = True)
+        # merge and export
+        mapped_results_df = pd.merge(communities_df, taxonomy_df[['GENBANK accession', 'Genus', 'Type']], left_on='accession_ids', right_on="GENBANK accession", how='left')
+        mapped_results_df.to_csv(f"{self.fpath}mapped_taxa.csv", encoding='utf-8', index=False)
+        # Count the number of unique communities by genus name
+        count_unique = mapped_results_df.groupby('Genus')['community_id'].nunique().reset_index(name='N_communities')
+        # Obtain a list of the community id(s) for each genus and export
+        genus_communities_df = mapped_results_df.groupby('Genus')['community_id'].unique().apply(list).reset_index(name='community_ids')
+        genus_communities_df = genus_communities_df.merge(count_unique[['Genus', 'N_communities']], left_on='Genus', right_on='Genus', how='left') 
+        genus_communities_df.to_csv(f"{self.fpath}genus_community_ids.csv", encoding='utf-8', index=False)
+    
     def calculate_layout(self, gr) -> dict:
         '''Get NetworkX graph layout'''
         print("Calculating graph layout. This may take a while...")
@@ -108,6 +127,7 @@ class GetPartitions:
         graph_object = self.make_graph(df_clean[["binA", "binB", "distance"]])
         partition_df = self.do_partitions(graph_object)
         p = self.output_conditioning(partition_df)
+        d = self.output_mapping(p)
 
         if self.plot_graph == True:
             '''Do dendrogram'''
