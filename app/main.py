@@ -95,12 +95,13 @@ class GetPartitions:
     def output_conditioning(self, df) -> pd.DataFrame():
         '''Produce structured data, save'''
         if self.is_louvain:
-            unique, counts = np.unique(df, return_counts=True)
-            genomes = [df[0].iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+            genome_match_df = df[0]
         else:
-            unique, counts = np.unique(df[1], return_counts=True)
             df.set_index([0], inplace=True)
-            genomes = [df.iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+            genome_match_df = df.copy()
+        breakpoint()
+        unique, counts = np.unique(genome_match_df, return_counts=True)
+        genomes = [genome_match_df.iloc[np.where(np.isin(genome_match_df.values, int(i)))[0]].index.to_list() for i in unique]
         print(f"Saving output. There are {len(unique)} communities detected")
 
         output_table = pd.DataFrame()
