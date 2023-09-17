@@ -50,6 +50,8 @@ class GetPartitions:
         genome_names = df["binA"].tolist()  
         binB = df["binB"].tolist()
         dist = df["distance"].tolist()
+        hashes = df["hashes"].tolist()
+        pvalue = df["p-value"].tolist()
         gr = nx.Graph()
         [gr.add_node(i) for i in df["binA"].unique().tolist()]
         edges = [[(genome_names[i], binB[i], {"distance": dist[i], "hashes": hashes[i], "p-value": pvalue[i]})] for i in range(
@@ -105,7 +107,6 @@ class GetPartitions:
 
     def output_conditioning(self, df) -> pd.DataFrame():
         '''Produce structured data, save'''
-        print(f"Saving output. There are {len(unique)} communities detected")
         if self.is_louvain:
             unique, counts = np.unique(df, return_counts=True)
             genomes = [df[0].iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
@@ -113,6 +114,7 @@ class GetPartitions:
             unique, counts = np.unique(df[1], return_counts=True)
             df.set_index([0], inplace=True)
             genomes = [df.iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+        print(f"Saving output. There are {len(unique)} communities detected")
 
         output_table = pd.DataFrame()
         output_table["community_id"] = unique
@@ -157,9 +159,9 @@ class GetPartitions:
         '''Clean & structure data'''
         df_clean = self.load_and_clean()
         if self.is_louvain:
-            graph_object, partition_df = self.make_nx_graph(df_clean[["binA", "binB", "distance"]])
+            graph_object, partition_df = self.make_nx_graph(df_clean[["binA", "binB", "distance", "hashes", "p-value"]])
         else: 
-            graph_object, partition_df = self.make_i_graph(df_clean[["binA", "binB", "distance"]])
+            graph_object, partition_df = self.make_i_graph(df_clean[["binA", "binB", "distance", "hashes", "p-value"]])
 
         output_table, p = self.output_conditioning(partition_df)
         self.output_mapping(output_table)
