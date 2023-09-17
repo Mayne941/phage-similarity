@@ -1,4 +1,4 @@
-# Clustering bacteriophage genomes into communities by Louvain/Leiden paritioning
+# Clustering bacteriophage genomes into communities by Louvain/Leiden partioning
 ## Rich Mayne & Dann Turner 2023
 
 ### Description
