@@ -1,18 +1,19 @@
 import pandas as pd
 import os
-import community as louvain
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
-import plotly.express as px
 import networkx as nx
 import time
 from datetime import datetime
-from .cluster_graph import ClusterPlot
-from .dendrogram import create_dendrogram
+
+from app.cluster_graph import ClusterPlot
+from app.dendrogram import create_dendrogram
+from app.utils.call_graph_objs import do_leiden_partitions, do_louvain_partitions
 
 class GetPartitions:
-    def __init__(self, params) -> None:
+    def __init__(self, params, is_louvain = False) -> None:
         '''Set up exp folder, decode runtime params'''
+        self.is_louvain = is_louvain
         self.le = LabelEncoder()
         self.sample_size = params["sample_size"]
         self.distance_value = params["distance_value"]    
@@ -39,13 +40,12 @@ class GetPartitions:
         df_no_dups["t"] = df_no_dups["tX"].str.split("/").str[0].astype(int)
         df_no_dups["X"] = df_no_dups["tX"].str.split("/").str[1].astype(int)
         df_no_dups["hashes"] = df_no_dups["t"]/df_no_dups["X"]
-        print(f"Filtering by hashes has removed {df_no_dups.shape[0] - df_filtered.shape[0]} samples.")
         '''Sample size filter'''
         if self.sample_size <= 0:
-            self.sample_size = df_filtered.shape[0]
-        return df_filtered.head(self.sample_size)
+            self.sample_size = df_no_dups.shape[0]
+        return df_no_dups.head(self.sample_size)
 
-    def make_graph(self, df) -> nx.Graph():
+    def make_nx_graph(self, df) -> nx.Graph():
         '''Make NetworkX graph object'''
         genome_names = df["binA"].tolist()  
         binB = df["binB"].tolist()
@@ -69,20 +69,51 @@ class GetPartitions:
         print(nx.info(gr))
         ''' Write out a graphml file for visualisation in cytoscape'''
         nx.write_graphml(gr, f"{self.fpath}networkx.xml")
-        return gr
+        partition_df = do_louvain_partitions(gr, self.save_partition_data, self.fpath)
+        return gr, partition_df
 
-    def do_partitions(self, gr) -> pd.DataFrame():
-        '''Use Louvain method to get partitions, save as JSON'''
-        df = pd.DataFrame([louvain.best_partition(gr,weight='distance')]).T
-        if self.save_partition_data == True:
-            df.to_json(f"{self.fpath}full_louvain_partition.json")
-        return df
+    def make_i_graph(self, df) -> nx.Graph():
+        '''Make NetworkX graph object'''
+        genome_names = df["binA"].tolist() 
+        binB = df["binB"].tolist()
+        dist = df["distance"].tolist()
+        hashes = df["hashes"].tolist()
+        pvalue = df["p-value"].tolist()
+        df.to_csv(f"{self.fpath}passed_to_networkx.tsv", sep='\t', encoding='utf-8') # write out what is passed to the network
+        gr = nx.Graph()
+        [gr.add_node(i) for i in df["binA"].unique().tolist()]
+        edges = [[(genome_names[i], binB[i], {"distance": dist[i], "hashes": hashes[i], "p-value": pvalue[i]})] for i in range(
+            len(genome_names))]
+        [gr.add_edges_from(i) for i in edges]
+        #Filter a list of edges from the graph that are greater than the distance threshold
+        long_edges = list(filter(lambda e: e[2] > self.distance_value, (e for e in gr.edges.data('distance'))))
+        le_ids = list(e[:2] for e in long_edges)
+        gr.remove_edges_from(le_ids)
+        #Filter a list of edges from the graph that are less than the hashes threshold
+        hash_edges = list(filter(lambda e: e[2] < self.hash_threshold, (e for e in gr.edges.data('hashes'))))
+        he_ids = list(e[:2] for e in hash_edges)
+        #Filter a list of edges from the graph that are greater than the p-value threshold
+        pval_edges = list(filter(lambda e: e[2] > self.p_threshold, (e for e in gr.edges.data('p-value'))))
+        pval_ids = list(e[:2] for e in pval_edges)
+        gr.remove_edges_from(pval_ids)
+        print(nx.info(gr))
+        #p-value filter - suggest 1e-10
+        ''' Write out a graphml file for visualisation in cytoscape'''
+        nx.write_graphml(gr, f"{self.fpath}networkx.xml")
+        part_df = do_leiden_partitions(gr, self.save_partition_data, self.fpath)
+        return gr, part_df
 
     def output_conditioning(self, df) -> pd.DataFrame():
         '''Produce structured data, save'''
-        unique, counts = np.unique(df, return_counts=True)
         print(f"Saving output. There are {len(unique)} communities detected")
-        genomes = [df[0].iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+        if self.is_louvain:
+            unique, counts = np.unique(df, return_counts=True)
+            genomes = [df[0].iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+        else:
+            unique, counts = np.unique(df[1], return_counts=True)
+            df.set_index([0], inplace=True)
+            genomes = [df.iloc[np.where(np.isin(df.values, int(i)))[0]].index.to_list() for i in unique]
+
         output_table = pd.DataFrame()
         output_table["community_id"] = unique
         output_table["n_genomes"] = counts
@@ -91,12 +122,13 @@ class GetPartitions:
         output_table["accession_ids"] = genomes
         output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: str(x).replace("[","").replace("]","").replace("'",""))
         output_table.to_csv(f"{self.fpath}community_members_table.csv")
-        return output_table #len(unique)
+        return output_table, len(unique)
 
     def output_mapping(self, output_table) -> None:
         '''Map to current BVS taxonomy, save'''
         # load the data
         communities_df = pd.DataFrame(output_table)
+        # Load custom version of the VMR that also lists strains
         taxonomy_df = pd.read_csv(self.taxonomy_file_path, header=0)
         # split the accession_ids field into lists
         communities_df['accession_ids'] = communities_df['accession_ids'].str.split(', ')
@@ -124,10 +156,13 @@ class GetPartitions:
 
         '''Clean & structure data'''
         df_clean = self.load_and_clean()
-        graph_object = self.make_graph(df_clean[["binA", "binB", "distance"]])
-        partition_df = self.do_partitions(graph_object)
-        p = self.output_conditioning(partition_df)
-        d = self.output_mapping(p)
+        if self.is_louvain:
+            graph_object, partition_df = self.make_nx_graph(df_clean[["binA", "binB", "distance"]])
+        else: 
+            graph_object, partition_df = self.make_i_graph(df_clean[["binA", "binB", "distance"]])
+
+        output_table, p = self.output_conditioning(partition_df)
+        self.output_mapping(output_table)
 
         if self.plot_graph == True:
             '''Do dendrogram'''
