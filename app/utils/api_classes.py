@@ -10,5 +10,5 @@ class LouvainData(BaseModel):
     dendro_threshold: int = 1.5
     dendro_truncation: str = "none"
     dendro_width: int = 2500
-    hash_threshold: float = 0.30
+    hash_threshold: float = 0.15
     p_threshold: float = 1e-10
