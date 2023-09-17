@@ -58,6 +58,12 @@ class GetPartitions:
         pval_edges = list(filter(lambda e: e[2] > self.params["p_threshold"], (e for e in gr.edges.data('p-value'))))
         pval_ids = list(e[:2] for e in pval_edges)
         gr.remove_edges_from(pval_ids)
+        
+        '''Filter a list of edges from the graph that are less than the hashes threshold'''
+        hash_edges = list(filter(lambda e: e[2] < self.params["hash_threshold"], (e for e in gr.edges.data('hashes'))))
+        he_ids = list(e[:2] for e in hash_edges)
+        gr.remove_edges_from(he_ids)
+                
         print(nx.info(gr))
 
         ''' Write out a graphml file for visualisation in cytoscape'''
@@ -87,6 +93,12 @@ class GetPartitions:
         pval_edges = list(filter(lambda e: e[2] > self.params["p_threshold"], (e for e in gr.edges.data('p-value'))))
         pval_ids = list(e[:2] for e in pval_edges)
         gr.remove_edges_from(pval_ids)
+
+        '''Filter a list of edges from the graph that are less than the hashes threshold'''
+        hash_edges = list(filter(lambda e: e[2] < self.params["hash_threshold"], (e for e in gr.edges.data('hashes'))))
+        he_ids = list(e[:2] for e in hash_edges)
+        gr.remove_edges_from(he_ids)
+        
         print(nx.info(gr))
         ''' Write out a graphml file for visualisation in cytoscape'''
         nx.write_graphml(gr, f"{self.fpath}networkx.xml")
@@ -106,7 +118,9 @@ class GetPartitions:
         output_table = pd.DataFrame()
         output_table["community_id"] = unique
         output_table["n_genomes"] = counts
-        output_table["threshold"] = self.params["distance_value"]
+        output_table["distance_threshold"] = self.params["distance_value"]
+        output_table["pvalue_threshold"] = self.params["p_threshold"]
+        output_table["hashes_threshold"] = self.params["hash_threshold"]
         output_table.to_csv(f"{self.fpath}community_counts_table.csv")
         output_table["accession_ids"] = genomes
         output_table["accession_ids"] = output_table["accession_ids"].apply(lambda x: ", ".join(x))
