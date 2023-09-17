@@ -24,14 +24,14 @@ Download the lastest [INPHARED genomes excluding RefSeq file](https://github.com
 mash sketch -i -k 15 -s 25000 5Jan2023_genomes_excluding_refseq.fa
 mash dist -i -d 0.3 5Jan2023_genomes_excluding_refseq.msh 5Jan2023_genomes_excluding_refseq.mash > 5Jan2023.d0.3.k15.s25000.tsv
 ```  
-1. Copy the MASH distance file to the root of the cloned repository.
-1. Run the app using the command
+2. Copy the MASH distance file to the root of the cloned repository.
+3. Run the app using the command
    ```bash
    python3 -m uvicorn app.api:app --reload
    ```
-1. Navigate to http://127.0.0.1:8000/docs in your browser of choice.
-1. Expand the "/do_partitions/" window, then hit "try it out".
-1. Specify your run parameters, including defining the path to your MASH output file. Then, hit "execute".
+4. Navigate to http://127.0.0.1:8000/docs in your browser of choice.
+5. Expand the "/do_partitions/" window, then hit "try it out".
+6. Specify your run parameters, including defining the path to your MASH output file. Then, hit "execute".
 
 ### Run parameters:
 1. Distance value. The MASH distance threshold, used to restrict the sensitivity of genome similarity, i.e. any edges with similarity scores > threshold will be dropped.
